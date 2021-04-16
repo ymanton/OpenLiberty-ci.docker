@@ -1,3 +1,13 @@
+FROM adoptopenjdk:8-jre-openj9 AS criu-build
+
+WORKDIR /criu-build
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git build-essential pkg-config libbsd-dev libnftables-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf python-ipaddress iproute2 libcap-dev libnl-3-dev libnet-dev libaio-dev python3-future asciidoc xmlto \
+    && rm -rf /var/lib/apt/lists/* \
+    && git clone https://github.com/checkpoint-restore/criu.git \
+    && make -C criu DESTDIR=/criu-install install
+
 FROM adoptopenjdk:8-jre-openj9
 ARG LIBERTY_VERSION=21.0.0.3
 ARG LIBERTY_SHA=c9eef099515b0b083103338c5743daa43bfe5440
@@ -5,7 +15,7 @@ ARG LIBERTY_BUILD_LABEL=cl210320210309-1101
 ARG LIBERTY_DOWNLOAD_URL=https://repo1.maven.org/maven2/io/openliberty/openliberty-kernel/$LIBERTY_VERSION/openliberty-kernel-$LIBERTY_VERSION.zip
 ARG LIBERTY_LICENSE_URL=https://raw.githubusercontent.com/OpenLiberty/open-liberty/master/LICENSE
 ARG LIBERTY_LICENSE_SHA=84f00503d6516c91190de866e78d6010899673b7
-ARG OPENJ9_SCC=true
+ARG OPENJ9_SCC=false
 ARG VERBOSE=false
 
 LABEL org.opencontainers.image.authors="Arthur De Magalhaes, Chris Potter, Leo Christy Jesuraj" \
@@ -20,9 +30,12 @@ LABEL org.opencontainers.image.authors="Arthur De Magalhaes, Chris Potter, Leo C
 COPY helpers /opt/ol/helpers
 COPY fixes/ /opt/ol/fixes/
 
+COPY --from=criu-build /criu-install /
+
 # Install Open Liberty
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip openssl wget \
+    && apt-get install -y --no-install-recommends libbsd0 libnftables1 libprotobuf-c1 libnl-3-200 libnet1 \
     && rm -rf /var/lib/apt/lists/* \
     && wget -q $LIBERTY_DOWNLOAD_URL -U UA-Open-Liberty-Docker -O /tmp/wlp.zip \
     && echo "$LIBERTY_SHA  /tmp/wlp.zip" > /tmp/wlp.zip.sha1 \
