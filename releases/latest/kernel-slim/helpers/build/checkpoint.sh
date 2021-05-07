@@ -14,8 +14,12 @@ then
     docker commit --change='CMD ["criu", "restore", "-D", "/output/checkpoint", "--shell-job", "--tcp-established", "--file-locks"]' "$containername" "checkpoint:$$"
     docker container rm "$containername"
 else
-    server start
-    serverPID="$( cat /opt/ol/wlp/output/.pid/defaultServer.pid )"
+    #server start
+    #serverPID="$( cat /opt/ol/wlp/output/.pid/defaultServer.pid )"
+    server run &
+    serverPID=$!
+    sleep 10
+
     mkdir /output/checkpoint
     criu dump -t "$serverPID" -D /output/checkpoint --shell-job --tcp-established --file-locks
 fi
